@@ -1,0 +1,3 @@
+file 'uploads/32f89456-6a1f-4d04-b937-2733feac1b6d/opening_converted.mp4'
+file 'uploads/32f89456-6a1f-4d04-b937-2733feac1b6d/subtitled_video_converted.mp4'
+file 'uploads/32f89456-6a1f-4d04-b937-2733feac1b6d/ending_converted.mp4'

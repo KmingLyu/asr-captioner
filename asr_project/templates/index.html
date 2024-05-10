@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Video Upload</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('input[type=radio][name=source]').change(function() {
+                if (this.value == 'youtube') {
+                    $('#youtube-group').show();
+                    $('#file-group').hide();
+                } else if (this.value == 'file') {
+                    $('#file-group').show();
+                    $('#youtube-group').hide();
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+
+        <div class="input-group">
+            <label>影片來源：</label>
+            <div>
+                <input type="radio" id="file" name="source" value="file" checked>
+                <label for="file">上傳檔案（.mp4）</label>
+                <input type="radio" id="youtube" name="source" value="youtube">
+                <label for="youtube">YouTube 連結</label>
+            </div>
+        </div>
+
+        <div id="youtube-group" class="input-group" style="display: none;">
+            <input type="text" name="youtube">
+        </div>
+
+        <div id="file-group" class="input-group">
+            <input type="file" name="file">
+        </div>
+
+        <div class="input-group">
+            <label>SRT 字幕檔 (不指定會自動辨識)：</label>
+            <input type="file" name="srt">
+        </div>
+
+        <div class="horizontal-group">
+            <div class="input-group">
+                <label>選擇翻譯後的語言：</label>
+                <select name="translation_language">
+                    {% for key, value in LANGUAGES.items() %}
+                        <option value="{{ key }}">{{ value.capitalize() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="subtitle_color">選擇字幕顏色：</label>
+                <input type="color" id="subtitle_color" name="subtitle_color" value="#FFFFFF">
+            </div>
+
+            
+
+        </div>
+
+
+        <div class="input-group">
+            <label>上傳片頭影片：</label>
+            <input type="file" name="opening">
+        </div>
+
+        <div class="input-group">
+            <label>上傳片尾影片：</label>
+            <input type="file" name="ending">
+        </div>
+        <!-- 新增的欄位結束 -->
+
+        <div class="input-group">
+            <label>Initial Prompt：</label>
+            <input type="text" name="prompt" placeholder="可輸入一些容易被辨識錯誤的單詞（人名、地名、專有名詞等等）">
+        </div>
+
+        <input type="submit" value="Upload">
+    </form>
+</body>
+
+</html>
