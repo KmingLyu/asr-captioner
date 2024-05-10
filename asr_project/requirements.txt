@@ -1,0 +1,7 @@
+Flask
+celery
+validators
+transformers
+openai
+pysrt
+tqdm
