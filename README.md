@@ -1,7 +1,7 @@
 # asr-captioner
 
 - 語音辨識模型：whisper
-- 翻譯模型：gpt-3.5-turbo、Helsinki-NLP/opus-mt-zh-en
+- 翻譯模型：Helsinki-NLP/opus-mt-zh-en
 - 後端：python flask
 - 排程：celery
 
