@@ -1,0 +1,9 @@
+openai-whisper
+celery
+transformers
+pysrt
+tqdm
+opencc-python-reimplemented
+yt-dlp
+redis
+sentencepiece

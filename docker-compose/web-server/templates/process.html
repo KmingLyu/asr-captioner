@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Processing Video</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <!-- <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='css/processStyles.css') }}"
+    /> -->
+  </head>
+  <body>
+    <h1>影片處理中請不要關閉此頁面，處理完後會自動下載，請耐心等候</h1>
+    <a id="download-link"> Processing Video...</a>
+    <div id="download-done" style="display: none">youtube 影片下載完成</div>
+    <div id="asr-done" style="display: none">語音辨識完成</div>
+    <div id="translate-done" style="display: none">翻譯完成</div>
+    <div id="done" style="display: none">全部處理完成，已自動下載</div>
+
+    <script>
+      $(document).ready(function () {
+        let uuid = "{{ uuid }}"; // Pass uuid from Flask
+        function checkStatus() {
+          $.get("/check-status/" + uuid, function (data, status) {
+            if (data.status == "done") {
+              const done = document.getElementById("done");
+              done.style.display = "block";
+              // If processing is done, stop the interval and update download link
+              clearInterval(intervalID);
+              window.location.href = "/download/" + uuid;
+            } else {
+              if (data["download_done"]) {
+                // 在頁面中顯示訊息"youtube 影片下載完成"
+                const downloadDone = document.getElementById("download-done");
+                downloadDone.style.display = "block";
+              }
+              if (data["asr_done"]) {
+                // 在頁面中顯示訊息"語音辨識完成"
+                const asrDone = document.getElementById("asr-done");
+                asrDone.style.display = "block";
+              }
+              if (data["translate_done"]) {
+                // 在頁面中顯示訊息"翻譯完成"
+                const translateDone = document.getElementById("translate-done");
+                translateDone.style.display = "block";
+              }
+            }
+          });
+        }
+        let intervalID = setInterval(checkStatus, 5000); // Check every 5 seconds
+      });
+    </script>
+  </body>
+</html>

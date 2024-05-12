@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    container_name: asr-captioner-redis
+    ports:
+      - "6381:6379"
+    networks:
+      - asr-captioner-network
+
+  web-server:
+    build: ./web-server
+    container_name: asr-captioner-web-server
+    ports:
+      - "7001:7000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - redis
+    networks:
+      - asr-captioner-network
+
+  worker:
+    build: ./worker
+    container_name: asr-captioner-worker
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - asr-captioner-network
+
+networks:
+  asr-captioner-network:
+    driver: bridge
+
+volumes:
+  uploads:
