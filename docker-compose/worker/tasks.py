@@ -132,7 +132,7 @@ def download_youtube_video(info):
 def perform_speech_recognition(info):
     # 在這裡填入您的語音辨識程式碼
     print(f"Performing speech recognition on: {info['video_file_path']}")
-    model = 'tiny'
+    model = 'medium'
     command = f"/opt/conda/envs/worker/bin/whisper --model {model} --output_dir {info['dir_path']} --output_format srt --initial_prompt '{info['initial_prompt']}' --word_timestamps True --max_line_width 40 {info['video_file_path']}"
     print(command)
     process = subprocess.Popen(command, shell=True)
