@@ -11,7 +11,12 @@
 ### 使用 docker-compose 安裝
 1. Server 須先安裝好 docker, docker-compose, 以及 gpu driver 等設定
 
-2. 到 docker-compose 資料夾底下執行以下指令
+2. 進入 asr-captioner-docker 資料夾:
+```
+cd asr-captioner-docker
+```
+
+3. 執行以下指令:
 ```
 docker-compose up -d
 ```

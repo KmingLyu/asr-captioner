@@ -12,7 +12,12 @@ Main features include speech recognition, translation, merging subtitles with vi
 ### Installation using docker-compose
 1. The server must have docker, docker-compose, and GPU driver properly installed.
 
-2. Navigate to the docker-compose directory and run the following command:
+2. Enter the asr-captioner-docker directory:
+```
+cd asr-captioner-docker
+```
+
+3. Navigate to the docker-compose directory and run the following command:
 ```
 docker-compose up -d
 ```
