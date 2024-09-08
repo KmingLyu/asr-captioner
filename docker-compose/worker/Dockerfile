@@ -15,7 +15,8 @@ SHELL ["conda", "run", "-n", "worker", "/bin/bash", "-c"]
 # Install specific Python packages using pip
 COPY requirements.txt .
 # PyTorch, torchvision, and torchaudio will be installed with a specific version for CUDA 11.8 support
-RUN pip install --index-url https://download.pytorch.org/whl/cu118 torch torchvision torchaudio
+# RUN pip install --index-url https://download.pytorch.org/whl/cu118 torch torchvision torchaudio
+RUN conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
 RUN pip install celery
 RUN pip install -r requirements.txt
 
