@@ -1,44 +1,44 @@
 # asr-captioner
 
-- 語音辨識模型：whisper
-- 翻譯模型：Helsinki-NLP/opus-mt-zh-en
-- 後端：python flask
-- 排程：celery
+- Speech Recognition Model: whisper
+- Translation Model: Helsinki-NLP/opus-mt-zh-en
+- Backend: python flask
+- Task Scheduling: celery
 
-主要功能包括語音辨識、翻譯、合併字幕與影片都在 task.py
+Main features include speech recognition, translation, merging subtitles with video, all handled in `task.py`.
 
-## 安裝方式
-### 使用 docker-compose 安裝
-1. Server 須先安裝好 docker, docker-compose, 以及 gpu driver 等設定
+## Installation
+### Installation using docker-compose
+1. The server must have docker, docker-compose, and GPU driver properly installed.
 
-2. 到 docker-compose 資料夾底下執行以下指令
+2. Navigate to the docker-compose directory and run the following command:
 ```
 docker-compose up -d
 ```
-  會建立 3 個 container
-  - asr-captioner-web-server: 主要連線
-  - asr-captioner-worker: 執行任務，包含youtube影片下載、語音辨識、翻譯、合併字幕與影片
-  - asr-captioner-redis: 作為 broker 分配任務
+  This will create 3 containers:
+  - `asr-captioner-web-server`: Main server connection
+  - `asr-captioner-worker`: Executes tasks including YouTube video downloads, speech recognition, translation, and merging subtitles with the video
+  - `asr-captioner-redis`: Acts as the broker to distribute tasks
 
-3. 在瀏覽器輸入 "http://你的server.ip:7001"
-4. 結束程式
+3. Open your browser and enter "http://your.server.ip:7001"
+4. To stop the program:
 ```
 docker-compose down
 ```
 
-### 其他指令
+### Other Commands
 
-查看程式執行狀況
+Check the program's running status:
 ```
 docker logs asr-captioner-web-server
 docker logs asr-captioner-worker
 ```
 
-查看使用者上傳的檔案(預設處理完會自動刪除)
-  
-使用者上傳的檔案存放在 `asr-captioner-web-server` 與 `asr-captioner-worker` 裡面的 `/app/uploads`
+Check user-uploaded files (By default, files will be automatically deleted after processing).
 
-可使用以下指令查看：
+User-uploaded files are stored in `/app/uploads` inside both `asr-captioner-web-server` and `asr-captioner-worker`.
+
+You can check them using the following command:
 ```
 docker exec -it asr-captioner-web-server bash
 cd uploads
