@@ -1,3 +1,4 @@
+[繁體中文說明](README_zh.md)
 # asr-captioner
 
 - Speech Recognition Model: whisper
