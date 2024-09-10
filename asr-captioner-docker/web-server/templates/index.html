@@ -25,6 +25,9 @@
 
   <body>
     <div class="main-container">
+      <div class="header">
+        <div class="header-title">影片自動字幕產生器</div>
+      </div>
       <div id="uploading">上傳中，請勿關閉視窗或重複提交表單。</div>
       <div class="form-container">
         <form method="POST" action="/upload" enctype="multipart/form-data">
@@ -57,16 +60,16 @@
             <input type="file" name="srt" />
           </div>
 
-          <div class="horizontal-group">
-            <div class="input-group" id="select-language">
+          <div class="input-group">
+            <!-- <div id="select-language">
               <label>選擇翻譯後的語言：</label>
               <select name="translation_language" class="translated-language">
                 {% for key, value in LANGUAGES.items() %}
                 <option value="{{ key }}">{{ value.capitalize() }}</option>
                 {% endfor %}
               </select>
-            </div>
-            <div class="input-group">
+            </div> -->
+            <!-- <div class="input-group"> -->
               <label for="subtitle_color">選擇字幕顏色：</label>
               <input
                 type="color"
@@ -74,7 +77,7 @@
                 name="subtitle_color"
                 value="#FFFFFF"
               />
-            </div>
+            <!-- </div> -->
           </div>
 
           <div class="input-group" id="opening-input">
@@ -96,8 +99,9 @@
               placeholder="可輸入一些容易被辨識錯誤的單詞（人名、地名、專有名詞等等）"
             />
           </div>
+          <div class="horizontal-line"></div>
+          <input class="submit-button" type="submit" value="Upload" />
 
-          <input type="submit" value="Upload" />
         </form>
       </div>
     </div>

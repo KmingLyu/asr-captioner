@@ -195,6 +195,7 @@ def translate_subtitles(info):
 
 @app.task
 def merge_subtitles_with_video(info):
+    return info
     # 在這裡填入您的字幕與影片合併程式碼
     print(f"Merging subtitles with video: {info['translated_srt_path']}")
 
@@ -301,7 +302,8 @@ def create_zip_file(info):
         files_to_add = {
             info['srt_file_path']: f'{video_title}.srt',
             info['translated_srt_path']: f'{video_title}_translated.srt',
-            info['subtitled_video_path']: f'{video_title}_subtitled.mp4',
+            info['video_file_path']: f'{video_title}.mp4',
+            # info['subtitled_video_path']: f'{video_title}_subtitled.mp4',
             # info['concatenated_video_path']: f'{video_title}_full_video.mp4'
             # info.get('concatenated_video_path', None): f'{video_title}_full_video.mp4'
 
