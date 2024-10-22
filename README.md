@@ -1,6 +1,6 @@
 [繁體中文說明](README_zh.md)
 # asr-captioner
-
+![範例圖片](asr-captioner.png)
 - Speech Recognition Model: whisper
 - Translation Model: Helsinki-NLP/opus-mt-zh-en
 - Backend: python flask
