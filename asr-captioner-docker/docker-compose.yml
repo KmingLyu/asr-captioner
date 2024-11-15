@@ -13,7 +13,8 @@ services:
     ports:
       - "7001:7000"
     volumes:
-      - uploads:/app/uploads
+      - ./uploads:/app/uploads
+      - ./web-server:/app
     depends_on:
       - redis
     networks:
@@ -23,7 +24,8 @@ services:
     build: ./worker
     container_name: asr-captioner-worker
     volumes:
-      - uploads:/app/uploads
+      - ./uploads:/app/uploads
+      - ./worker:/app
     depends_on:
       - redis
     deploy:

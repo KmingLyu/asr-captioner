@@ -25,7 +25,12 @@
 
   <body>
     <div class="main-container">
-      <div id="uploading">上傳中，請勿關閉視窗或重複提交表單。</div>
+      <div class="header">
+        <div class="header-title">影片自動字幕產生器</div>
+      </div>
+      <div id="uploading" style="display: none">
+        上傳中，請勿關閉視窗或重複提交表單。
+      </div>
       <div class="form-container">
         <form method="POST" action="/upload" enctype="multipart/form-data">
           <div class="input-group">
@@ -45,46 +50,44 @@
           </div>
 
           <div id="youtube-group" class="input-group" style="display: none">
-            <input type="text" name="youtube" />
+            <input type="text" name="youtube" placeholder="輸入YouTube連結" />
           </div>
 
           <div id="file-group" class="input-group">
-            <input type="file" name="file" />
+            <input type="file" name="file" accept=".mp4" />
           </div>
 
           <div class="input-group">
             <label>SRT 字幕檔 (不指定會自動辨識)：</label>
-            <input type="file" name="srt" />
+            <input type="file" name="srt" accept=".srt" />
           </div>
 
-          <div class="horizontal-group">
-            <div class="input-group" id="select-language">
-              <label>選擇翻譯後的語言：</label>
-              <select name="translation_language" class="translated-language">
-                {% for key, value in LANGUAGES.items() %}
-                <option value="{{ key }}">{{ value.capitalize() }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="input-group">
-              <label for="subtitle_color">選擇字幕顏色：</label>
-              <input
-                type="color"
-                id="subtitle_color"
-                name="subtitle_color"
-                value="#FFFFFF"
-              />
-            </div>
+          <div class="input-group">
+            <label>選擇影片原始語言：</label>
+            <select name="language">
+              <option value="chinese">中文</option>
+              <option value="english">English</option>
+            </select>
           </div>
 
-          <div class="input-group" id="opening-input">
+          <div class="input-group">
+            <label for="subtitle_color">選擇字幕顏色：</label>
+            <input
+              type="color"
+              id="subtitle_color"
+              name="subtitle_color"
+              value="#FFFFFF"
+            />
+          </div>
+
+          <div class="input-group" id="opening-input" style="display: none">
             <label>上傳片頭影片：</label>
-            <input type="file" name="opening" />
+            <input type="file" name="opening" accept=".mp4" />
           </div>
 
-          <div class="input-group" id="ending-input">
+          <div class="input-group" id="ending-input" style="display: none">
             <label>上傳片尾影片：</label>
-            <input type="file" name="ending" />
+            <input type="file" name="ending" accept=".mp4" />
           </div>
           <!-- 新增的欄位結束 -->
 
@@ -96,47 +99,18 @@
               placeholder="可輸入一些容易被辨識錯誤的單詞（人名、地名、專有名詞等等）"
             />
           </div>
-
-          <input type="submit" value="Upload" />
+          <div class="horizontal-line"></div>
+          <input class="submit-button" type="submit" value="Upload" />
         </form>
       </div>
     </div>
 
     <script>
-      // # Ensure either file or youtube link is provided
-      // if not file and not youtube_link:
-      //     message = "請上傳影片或輸入YouTube連結"
-      //     return render_template('alert.html', message=message)
-
-      // # Validate youtube link
-      // if youtube_link and not validators.url(youtube_link):
-      //     message = "YouTube連結格式不正確，請輸入正確的YouTube連結"
-      //     return render_template('alert.html', message=message)
-
-      // # Validate file format
-      // if file and not file.filename.endswith('.mp4'):
-      //     message = "影片格式不正確，請上傳mp4格式的影片"
-      //     return render_template('alert.html', message=message)
-
-      // # Validate srt format
-      // if srt and not srt.filename.endswith('.srt'):
-      //     message = "字幕格式不正確，請上傳srt格式的字幕"
-      //     return render_template('alert.html', message=message)
-
-      // # Validate intro video format
-      // if opening and not opening.filename.endswith('.mp4'):
-      //     message = "影片格式不正確，請上傳mp4格式的影片"
-      //     return render_template('alert.html', message=message)
-
-      // # Validate outro video format
-      // if ending and not ending.filename.endswith('.mp4'):
-      //     message = "影片格式不正確，請上傳mp4格式的影片"
-      //     return render_template('alert.html', message=message)
-      // 將以上這些驗證的方式改為 JavaScript 的方式，並在按下上傳按鈕時進行驗證，驗證訊息使用 alert 顯示
-
+      // 將表單驗證轉換為 JavaScript
       document
         .querySelector('input[type="submit"]')
-        .addEventListener("click", function () {
+        .addEventListener("click", function (event) {
+          // 加上 event 參數
           const file = document.querySelector(
             'input[type="file"][name="file"]'
           );
@@ -169,17 +143,17 @@
             opening.files.length &&
             !opening.files[0].name.endsWith(".mp4")
           ) {
-            message = "影片格式不正確，請上傳mp4格式的影片";
+            message = "片頭影片格式不正確，請上傳mp4格式的影片";
           } else if (
             ending.files.length &&
             !ending.files[0].name.endsWith(".mp4")
           ) {
-            message = "影片格式不正確，請上傳mp4格式的影片";
+            message = "片尾影片格式不正確，請上傳mp4格式的影片";
           }
           console.log(message);
           if (message) {
             alert(message);
-            event.preventDefault();
+            event.preventDefault(); // 阻止表單提交
             return false;
           }
 

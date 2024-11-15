@@ -13,6 +13,7 @@ import subprocess
 import json
 import zipfile
 import re
+import torch
 from opencc import OpenCC
 # import openai
 # app = Celery('tasks0', broker='redis://localhost:6379/0')
@@ -152,7 +153,7 @@ def perform_speech_recognition(info):
 
 @app.task
 def simplified_to_traditional(info):
-    cc = OpenCC('s2t')
+    cc = OpenCC('s2tw')
     with open(info['srt_file_path'], 'r') as f:
         srt = f.read()
     srt = cc.convert(srt)
@@ -162,27 +163,42 @@ def simplified_to_traditional(info):
 
 @app.task
 def translate_subtitles(info):
-
     print(f"Translating subtitles: {info['srt_file_path']}")
 
     # 使用 pysrt library 打開 srt 檔
     subs = pysrt.open(info['srt_file_path'])
-    model = pipeline("translation", model="Helsinki-NLP/opus-mt-zh-en", device=0)
-    # language = LANGUAGES_EN[info['language_id']]
+
+    # 根據選擇的語言決定翻譯方向和模型
+    if info['language'] == 'english':
+        # 英文翻譯到中文
+        model_name = "Helsinki-NLP/opus-mt-en-zh"
+        print("Translating from English to Chinese")
+    elif info['language'] == 'chinese':
+        # 中文翻譯到英文
+        model_name = "Helsinki-NLP/opus-mt-zh-en"
+        print("Translating from Chinese to English")
+    else:
+        raise ValueError("Unsupported language selected for translation.")
+
+    # 初始化翻譯模型
+    model = pipeline("translation", model=model_name, device=0 if torch.cuda.is_available() else -1)
 
     # 逐行進行翻譯
     for sub in tqdm(subs):
         translation = model(sub.text)
+        if model_name == "Helsinki-NLP/opus-mt-en-zh":
+            # 如果是英文翻譯到中文，則將翻譯的文本轉換為繁體中文
+            cc = OpenCC('s2tw')
+            translation[0]['translation_text'] = cc.convert(translation[0]['translation_text'])
         # 將翻譯的文本添加到原始的字幕
         sub.text += '\n' + translation[0]['translation_text']
-        # translation = openai_translator(sub.text, "gpt-3.5-turbo", language)
-        # sub.text += '\n' + translation
-    
+
     # 更新info中的translated.srt檔案路徑
     translated_srt_path = os.path.join(info['dir_path'], 'translated.srt')
     info['translated_srt_path'] = translated_srt_path
-    with open(os.path.join(info['dir_path'], 'info.json'), 'w') as f:
-        json.dump(info, f)
+    with open(os.path.join(info['dir_path'], 'info.json'), 'w', encoding='utf-8') as f:
+        json.dump(info, f, ensure_ascii=False, indent=4)
+
     # 寫入翻譯後的 srt 檔
     subs.save(translated_srt_path, encoding='utf-8')
 
@@ -260,28 +276,27 @@ def add_opening_ending(info):
     return info
 
 
+@app.task
+def concat_videos(info):
+    # 如果沒有opening, ending影片，則直接返回info
+    if not info['opening_file_path'] and not info['ending_file_path']:
+        return info
 
-# @app.task
-# def concat_videos(info):
-#     # 如果沒有opening, ending影片，則直接返回info
-#     if not info['opening_file_path'] and not info['ending_file_path']:
-#         return info
-
-#     # 建立一個filelist.txt，包含要合併的所有影片(opening, subtitled, ending)
-#     print(f"Concatenating videos: {info['dir_path']}")
-#     filelist_path = os.path.join(info['dir_path'], 'filelist.txt')
-#     with open(filelist_path, 'w') as f:
-#         if info['opening_file_path']:
-#             f.write(f"file '{os.path.basename(info['opening_file_path'])}'\n")
-#         f.write(f"file '{os.path.basename(info['subtitled_video_path'])}'\n")
-#         if info['ending_file_path']:
-#             f.write(f"file '{os.path.basename(info['ending_file_path'])}'\n")
-#     info['concatenated_video_path'] = os.path.join(info['dir_path'], 'concatenated.mp4')
-#     command = f"ffmpeg -f concat -safe 0 -i {filelist_path} -c copy -y {info['concatenated_video_path']}"
-#     print(command)
-#     process = subprocess.Popen(command, shell=True)
-#     process.wait()
-#     return info
+    # 建立一個filelist.txt，包含要合併的所有影片(opening, subtitled, ending)
+    print(f"Concatenating videos: {info['dir_path']}")
+    filelist_path = os.path.join(info['dir_path'], 'filelist.txt')
+    with open(filelist_path, 'w') as f:
+        if info['opening_file_path']:
+            f.write(f"file '{os.path.basename(info['opening_file_path'])}'\n")
+        f.write(f"file '{os.path.basename(info['subtitled_video_path'])}'\n")
+        if info['ending_file_path']:
+            f.write(f"file '{os.path.basename(info['ending_file_path'])}'\n")
+    info['concatenated_video_path'] = os.path.join(info['dir_path'], 'concatenated.mp4')
+    command = f"ffmpeg -f concat -safe 0 -i {filelist_path} -c copy -y {info['concatenated_video_path']}"
+    print(command)
+    process = subprocess.Popen(command, shell=True)
+    process.wait()
+    return info
 
 @app.task
 def create_zip_file(info):
@@ -301,6 +316,7 @@ def create_zip_file(info):
         files_to_add = {
             info['srt_file_path']: f'{video_title}.srt',
             info['translated_srt_path']: f'{video_title}_translated.srt',
+            info['video_file_path']: f'{video_title}.mp4',
             info['subtitled_video_path']: f'{video_title}_subtitled.mp4',
             # info['concatenated_video_path']: f'{video_title}_full_video.mp4'
             # info.get('concatenated_video_path', None): f'{video_title}_full_video.mp4'

@@ -31,6 +31,7 @@ def upload_file():
         youtube_link = request.form.get('youtube')
         initial_prompt = request.form.get('prompt')
         subtitle_color = request.form.get('subtitle_color')
+        language = request.form.get('language')
         # language_id = request.form.get('translation_language')
 
         uid = uuid.uuid4() 
@@ -109,7 +110,8 @@ def upload_file():
             'subtitle_color': subtitle_color,  
             'opening_file_path': opening_path,
             'ending_file_path': ending_path,
-            'language_id': 'en'
+            # 'language_id': 'en'
+            'language': language
         }
         with open(os.path.join(upload_path, 'info.json'), 'w') as f:
             json.dump(info, f)
