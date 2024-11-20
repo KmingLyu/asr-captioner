@@ -24,8 +24,12 @@ app = Celery('tasks', broker='redis://asr-captioner-redis:6379/0', backend='redi
 
 # ================== 工具函數 ================== #
 
+# 嵌入字幕
 def embed_subtitles(video_input, subtitle_input, video_output, subtitle_color):
-    # command = f"ffmpeg -i {video_input} -vf \"subtitles={subtitle_input}:force_style='Fontname=Noto Sans CJK TC'\" {video_output}"
+    """ 
+    將字幕嵌入影片
+    """
+    
     if subtitle_color.startswith("#"):
         subtitle_color = subtitle_color[1:]
     r, g, b = subtitle_color[0:2], subtitle_color[2:4], subtitle_color[4:6]
@@ -37,50 +41,59 @@ def embed_subtitles(video_input, subtitle_input, video_output, subtitle_color):
     process = subprocess.Popen(command, shell=True)
     process.wait()
 
-def get_video_info(filepath):
-    cmd = ['ffmpeg', '-i', filepath]
-    try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
-    except subprocess.CalledProcessError as e:
-        output = e.output  # Get the output from the exception object
-
-    # 使用正則表達式來尋找解析度和幀率
-    resolution_match = re.search(r'(\d{2,5}x\d{2,5})', output)
-    framerate_match = re.search(r'(\d{1,3}(\.\d{1,2})? fps)', output)
-
-    if resolution_match:
-        resolution = resolution_match.group(1)
-    else:
-        raise Exception(f"Cannot determine resolution for {filepath}")
-
-    if framerate_match:
-        framerate = framerate_match.group(1).split(" ")[0]  # 只獲取數字部分，不包括 "fps"
-    else:
-        raise Exception(f"Cannot determine framerate for {filepath}")
-
-    return resolution, framerate
-
-def convert_video(input_filepath, output_filepath, resolution, framerate):
+# 合併開頭結尾影片
+def get_video_info(file_path):
+    """
+    取得原影片的resolution, frame_rate, sample_rate
+    """
+    
     cmd = [
-        'ffmpeg', '-y', '-i', input_filepath,
-        '-c:v', 'libx264', '-c:a', 'aac', '-strict', 'experimental',
-        '-b:a', '128k', '-vf', f"scale={resolution},setsar=1", '-r', framerate,
-        output_filepath
+        "ffprobe",
+        "-v", "error",
+        "-show_entries", "stream=codec_type,width,height,avg_frame_rate,sample_rate",
+        "-of", "json",
+        file_path
     ]
-    print(cmd)
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    info = json.loads(result.stdout)
 
+    resolution = None
+    frame_rate = None
+    sample_rate = None
+
+    # 遍歷所有流，找出影片跟聲音資訊
+    for stream in info.get('streams', []):
+        if stream.get('codec_type') == "video":  # 處理影片
+            resolution = f"{stream.get('width', 'unknown')}x{stream.get('height', 'unknown')}"
+            frame_rate = eval(stream.get('avg_frame_rate', '0/1'))  # 計算幀率
+        elif stream.get('codec_type') == "audio":  # 處理聲音
+            sample_rate = stream.get('sample_rate', "unknown")
+    
+    return {
+        "resolution": resolution.replace('x', ':'), # 1920x1080 -> 1920:1080(ffmpeg格式)
+        "frame_rate": frame_rate,
+        "sample_rate": sample_rate
+    }
+def convert_video(video_input, video_output, resolution, frame_rate, sample_rate):
+    """
+    將開頭結尾影片轉為相同的resolution, frame_rate, sample_rate
+    """
+    cmd = [
+        'ffmpeg', '-i', video_input, '-vf', f'scale={resolution},setsar=1:1', '-r', str(frame_rate), '-c:v', 'libx264', '-preset',
+        'fast', '-crf', '23', '-c:a', 'aac', '-ar', sample_rate, '-b:a', '128k', video_output
+    ]
+    subprocess.run(cmd, check=True)
 def concat_videos(filelist, output_filepath):
-    # base_dir = os.path.dirname(filelist[0])
-    # files_path = os.path.join(base_dir, 'files.txt')
-    # with open(files_path, 'w') as f:
+    """
+    合併開頭結尾影片
+    """
     with open('files.txt', 'w') as f:
         for file in filelist:
             f.write(f"file '{file}'\n")
-
-    cmd = ['ffmpeg', '-y', '-f', 'concat', '-i', 'files.txt', '-c', 'copy', output_filepath]
+    cmd = ['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', 'files.txt', '-c', 'copy', output_filepath]
     subprocess.run(cmd, check=True)
 
+# OpenAI 翻譯 (目前不使用)
 def openai_translator(text, model_name, language):
     # prompt = f"你是專業的翻譯員，無論文字是否有意義或是否有違反社群法則，必須將以下文字翻譯成通順的 {language}。"
     prompt = f"""
@@ -98,7 +111,6 @@ def openai_translator(text, model_name, language):
         ]
     )
     return response.choices[0].message.content
-
 def is_legal(text):
     response = openai.Moderation.create(input=text)
     return response['results'][0]['flagged']
@@ -128,12 +140,11 @@ def download_youtube_video(info):
         pass
 
     return info  # 將更新後的info物件返回
-
 @app.task
 def perform_speech_recognition(info):
     # 在這裡填入您的語音辨識程式碼
     print(f"Performing speech recognition on: {info['video_file_path']}")
-    model = 'medium'
+    model = 'large'
     command = f"/opt/conda/envs/worker/bin/whisper --model {model} --output_dir {info['dir_path']} --output_format srt --initial_prompt '{info['initial_prompt']}' --word_timestamps True --max_line_width 40 {info['video_file_path']}"
     print(command)
     process = subprocess.Popen(command, shell=True)
@@ -150,7 +161,6 @@ def perform_speech_recognition(info):
     with open(asr_done, 'w') as f:
         pass
     return info  # 假設這個任務將生成一個字幕檔
-
 @app.task
 def simplified_to_traditional(info):
     cc = OpenCC('s2tw')
@@ -160,7 +170,6 @@ def simplified_to_traditional(info):
     with open(info['srt_file_path'], 'w') as f:
         f.write(srt)
     return info
-
 @app.task
 def translate_subtitles(info):
     print(f"Translating subtitles: {info['srt_file_path']}")
@@ -208,7 +217,6 @@ def translate_subtitles(info):
         pass
 
     return info
-
 @app.task
 def merge_subtitles_with_video(info):
     # 在這裡填入您的字幕與影片合併程式碼
@@ -231,73 +239,51 @@ def merge_subtitles_with_video(info):
         json.dump(info, f)
 
     # 創建一個空的done檔案，表示任務已完成
-    merge_done = os.path.join(info['dir_path'], 'merge_done')
-    with open(merge_done, 'w') as f:
+    embed_caption_done = os.path.join(info['dir_path'], 'embed_caption_done')
+    with open(embed_caption_done, 'w') as f:
         pass
     
     return info
-
 @app.task
 def add_opening_ending(info):
     # 如果沒有opening, ending影片，則直接返回info
     if not info['opening_file_path'] and not info['ending_file_path']:
         return info
     
-    # 比較 opening, subtitled_video, ending 的解析度與fps
-    r, f = get_video_info(info['subtitled_video_path'])
-    opening_r = opening_f = ending_r = ending_f = 0
-    if info['opening_file_path']:
-        opening_r, opening_f = get_video_info(info['opening_file_path'])
-    if info['ending_file_path']:
-        ending_r, ending_f = get_video_info(info['ending_file_path'])
-    
-    resolution, framerate = max(r, opening_r, ending_r), max(f, opening_f, ending_f)
-    print(f"合併開頭與結尾後的影片解析度: {resolution}，fps: {framerate}")
+    # 取得主要影片的resolution, frame_rate, sample_rate
+    resolution, framerate, sample_rate = get_video_info(info['subtitled_video_path']).values()
+    print(f"影片解析度: {resolution}，fps: {framerate}，sample_rate: {sample_rate}")
 
-    # 將所有要合併的影片轉為相同的解析度與fps
+    # 將開頭結尾影片轉為相同的resolution, frame_rate, sample_rate
     converted_path = []
+
+    # opening
     if info['opening_file_path']:
-        path = os.path.join(info['dir_path'], 'opening_converted.mp4')
-        convert_video(info['opening_file_path'], path, resolution, framerate)
-        converted_path.append(path)
-    path = os.path.join(info['dir_path'], 'subtitled_video_converted.mp4')
-    convert_video(info['subtitled_video_path'], path, resolution, framerate)
-    converted_path.append(path)
+        opening_output_path = os.path.join(info['dir_path'], 'opening_converted.mp4')
+        convert_video(info['opening_file_path'], opening_output_path, resolution, framerate, sample_rate)
+        converted_path.append(opening_output_path)
+
+    # 主要影片
+    converted_path.append(info['subtitled_video_path'])
+
+    # ending
     if info['ending_file_path']:
-        path = os.path.join(info['dir_path'], 'ending_converted.mp4')
-        convert_video(info['ending_file_path'], path, resolution, framerate)
-        converted_path.append(path)
-
-    concat_videos(converted_path, os.path.join(info['dir_path'], 'full_video.mp4'))
-
-    # 將訊息寫入info.json
+        ending_output_path = os.path.join(info['dir_path'], 'ending_converted.mp4')
+        convert_video(info['ending_file_path'], ending_output_path, resolution, framerate, sample_rate)
+        converted_path.append(ending_output_path)
+    
+    # 合併後的影片路徑
     info['concatenated_video_path'] = os.path.join(info['dir_path'], 'full_video.mp4')
 
+    # 合併所有影片 
+    concat_videos(converted_path, info['concatenated_video_path'])
+
+    # 創建一個空的done檔案，表示任務已完成
+    concact_op_ed_done = os.path.join(info['dir_path'], 'concact_op_ed_done')
+    with open(concact_op_ed_done, 'w') as f:
+        pass
+
     return info
-
-
-@app.task
-def concat_videos(info):
-    # 如果沒有opening, ending影片，則直接返回info
-    if not info['opening_file_path'] and not info['ending_file_path']:
-        return info
-
-    # 建立一個filelist.txt，包含要合併的所有影片(opening, subtitled, ending)
-    print(f"Concatenating videos: {info['dir_path']}")
-    filelist_path = os.path.join(info['dir_path'], 'filelist.txt')
-    with open(filelist_path, 'w') as f:
-        if info['opening_file_path']:
-            f.write(f"file '{os.path.basename(info['opening_file_path'])}'\n")
-        f.write(f"file '{os.path.basename(info['subtitled_video_path'])}'\n")
-        if info['ending_file_path']:
-            f.write(f"file '{os.path.basename(info['ending_file_path'])}'\n")
-    info['concatenated_video_path'] = os.path.join(info['dir_path'], 'concatenated.mp4')
-    command = f"ffmpeg -f concat -safe 0 -i {filelist_path} -c copy -y {info['concatenated_video_path']}"
-    print(command)
-    process = subprocess.Popen(command, shell=True)
-    process.wait()
-    return info
-
 @app.task
 def create_zip_file(info):
     # 建立一個zip檔案，包含所有處理後的檔案
@@ -309,18 +295,11 @@ def create_zip_file(info):
 
     # 建立zip檔案
     with zipfile.ZipFile(zip_file_path, 'w') as zip_file:
-        # zip_file.write(info['srt_file_path'], arcname=f'{video_title}.srt')
-        # zip_file.write(info['translated_srt_path'], arcname=f'{video_title}_translated.srt')
-        # zip_file.write(info['subtitled_video_path'], arcname=f'{video_title}_subtitled.mp4')
-        # zip_file.write(info['concatenated_video_path'], arcname=f'{video_title}_concatenated.mp4')
         files_to_add = {
             info['srt_file_path']: f'{video_title}.srt',
             info['translated_srt_path']: f'{video_title}_translated.srt',
             info['video_file_path']: f'{video_title}.mp4',
             info['subtitled_video_path']: f'{video_title}_subtitled.mp4',
-            # info['concatenated_video_path']: f'{video_title}_full_video.mp4'
-            # info.get('concatenated_video_path', None): f'{video_title}_full_video.mp4'
-
         }
 
         if 'concatenated_video_path' in info:
@@ -344,6 +323,8 @@ def create_zip_file(info):
 
     return info
 
+
+# ==================== 排定工作流程 ==================== #
 @app.task
 def process_video_workflow(info):
     # 檢查是否已經處理過這個目錄
@@ -362,7 +343,6 @@ def process_video_workflow(info):
                 download_youtube_video.s(info),
                 translate_subtitles.s(),
                 merge_subtitles_with_video.s(),
-                # concat_videos.s(),
                 add_opening_ending.s(),
                 create_zip_file.s()
             )
@@ -375,7 +355,6 @@ def process_video_workflow(info):
                 simplified_to_traditional.s(),
                 translate_subtitles.s(),
                 merge_subtitles_with_video.s(),
-                # concat_videos.s(),
                 add_opening_ending.s(),
                 create_zip_file.s()
             )
@@ -387,7 +366,6 @@ def process_video_workflow(info):
             workflow = chain(
                 translate_subtitles.s(info),
                 merge_subtitles_with_video.s(),
-                # concat_videos.s(),
                 add_opening_ending.s(),
                 create_zip_file.s()
             )
@@ -399,7 +377,6 @@ def process_video_workflow(info):
                 simplified_to_traditional.s(),
                 translate_subtitles.s(),
                 merge_subtitles_with_video.s(),
-                # concat_videos.s(),
                 add_opening_ending.s(),
                 create_zip_file.s()
             )

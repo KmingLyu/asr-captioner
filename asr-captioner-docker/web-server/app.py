@@ -152,6 +152,11 @@ def check_status(uuid):
         processing_status['asr_done'] = True
     if os.path.exists(os.path.join(dir_path, 'translate_done')):
         processing_status['translate_done'] = True
+    if os.path.exists(os.path.join(dir_path, 'embed_caption_done')):
+        processing_status['embed_caption_done'] = True
+    if os.path.exists(os.path.join(dir_path, 'concact_op_ed_done')):
+        processing_status['concact_op_ed_done'] = True
+
     return processing_status
 
 
