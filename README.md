@@ -1,5 +1,7 @@
 [繁體中文說明](README_zh.md)
+
 [線上版(使用OpenAI API)](https://subgenerator.netlify.app)
+
 # asr-captioner
 
 ![demo](asr-captioner.png)
